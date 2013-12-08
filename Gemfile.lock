@@ -3,16 +3,16 @@ GEM
   specs:
     ansi (1.4.3)
     builder (3.2.2)
-    docile (1.1.0)
+    docile (1.1.1)
     hashie (2.0.5)
     hashr (0.0.22)
-    hoe (3.7.1)
+    hoe (3.7.2)
       rake (>= 0.8, < 11.0)
     hoe-travis (1.2)
       hoe (~> 3.0)
       travis-lint (~> 1.2)
     hpricot (0.8.6)
-    minitest (5.0.8)
+    minitest (5.1.0)
     minitest-reporters (1.0.0)
       ansi
       builder
