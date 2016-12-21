@@ -28,29 +28,30 @@
 
 require 'cgi'
 require 'sbsm/cgi'
+require 'sbsm/drb'
 require 'sbsm/state'
-require 'sbsm/user'
 require 'sbsm/lookandfeelfactory'
 require 'delegate'
+require 'sbsm/trans_handler'
 
 module SBSM
-  class	Session
-		attr_reader :user, :active_thread, :key, :cookie_input, :cookie_name,
-			:unsafe_input, :valid_input, :request_path, :cgi, :attended_states
-    attr_accessor :validator, :trans_handler, :app
+  class	Session < SimpleDelegator
+		attr_reader :user, :active_thread, :key, :cookie_input,
+			:unsafe_input, :valid_input, :request_path, :cgi
+    attr_writer :trans_handler, :app, :validator
+		include DRbUndumped
 		PERSISTENT_COOKIE_NAME = "sbsm-persistent-cookie"
 		DEFAULT_FLAVOR = 'sbsm'
 		DEFAULT_LANGUAGE = 'en'
 		DEFAULT_STATE = State
 		DEFAULT_ZONE = nil
+		DRB_LOAD_LIMIT = 255 * 102400
     EXPIRES = 60 * 60
 		LF_FACTORY = nil
 		LOOKANDFEEL = Lookandfeel
 		CAP_MAX_THRESHOLD = 8
 		MAX_STATES = 4
 		SERVER_NAME = nil
-    UNKNOWN_USER = UnknownUser
-    @@mutex = Mutex.new
     def Session.reset_stats
       @@stats = {}
     end
@@ -87,64 +88,24 @@ module SBSM
                    requests, grand_total)
       ''
     end
-
-    # Session: It will be initialized indirectly whenever SessionStore cannot
-    # find a session in it cache. The parameters are given via SBSM::App.new
-    # which calls SessionStore.new
-    #
-    # === optional arguments
-    #
-    # * +validator+ -         A Ruby class overriding the SBSM::Validator class
-    # * +trans_handler+ -     A Ruby class overriding the SBSM::TransHandler class
-    # * +unknown_user+ -      A Ruby class overriding the SBSM::UnknownUser class
-    # * +cookie_name+ -       The cookie to save persistent user data
-    #
-    # === Examples
-    # Look at steinwies.ch
-    # * https://github.com/zdavatz/steinwies.ch (simple, mostly static files, one form, no persistence layer)
-    #
-    def initialize(app:,
-                   trans_handler: nil,
-                   validator: nil,
-                   unknown_user: nil,
-                   cookie_name: nil,
-                   multi_threaded: false)
-      SBSM.info "initialize th #{trans_handler} validator #{validator} app #{app.class}"
-      @app = app
-      @unknown_user = unknown_user
-      @unknown_user ||=  self.class::UNKNOWN_USER
-      @validator = validator
-      @validator  ||= Validator.new
-      fail "invalid validator #{@validator}" unless @validator.is_a?(SBSM::Validator)
-      @trans_handler = trans_handler
-      @trans_handler ||= TransHandler.instance
-      fail "invalid trans_handler #{@trans_handler}" unless @trans_handler.is_a?(SBSM::TransHandler)
-      @cookie_name =  cookie_name
-      @cookie_name ||= self.class::PERSISTENT_COOKIE_NAME
-      @@cookie_name = @cookie_name
-      @attended_states = {}
-      @persistent_user_input = {}
+    def initialize(key, app, validator=nil)
+      SBSM.info "initialize app #{app.class} @app is now #{@app.class} validator #{validator} th #{@trans_handler}" # drb_uri #{drb_uri}"
       touch()
       reset_input()
       reset_cookie()
-      @user = @unknown_user
-      @unknown_user_class
-      @unknown_user_class = @unknown_user.class
+      raise "Must pass key and app and validator to session" unless key && app # && validator
+      @app = app
+      @key = key
+      @validator = validator
+      @attended_states = {}
+      @persistent_user_input = {}
+      logout()
+      @unknown_user_class = @user.class
       @variables = {}
+      @mutex = Mutex.new
       @cgi = CGI.initialize_without_offline_prompt('html4')
-      @multi_threaded = multi_threaded
-      @mutex = multi_threaded ? Mutex.new: @@mutex
-      @active_thread = nil
-      SBSM.debug "session initialized #{self} with @cgi #{@cgi} multi_threaded #{multi_threaded} app #{app.object_id}"
-    end
-    def self.get_cookie_name
-      @@cookie_name
-    end
-    def method_missing(symbol, *args, &block) # Replaces old dispatch to DRb
-      @app.send(symbol, *args, &block)
-    end
-    def unknown_user
-      @unknown_user_class.new
+      SBSM.debug "session initialized #{self} key #{key} app #{app.class}  #{@validator.class} th #{@trans_handler.class} with @cgi #{@cgi}"
+      super(app)
     end
     def age(now=Time.now)
       now - @mtime
@@ -170,6 +131,7 @@ module SBSM
 			@persistent_user_input.store(:language, lang)
 			@valid_input.clear
 			@unsafe_input.clear
+			@active_thread = nil
 			true
 		end
     @@msie_ptrn = /MSIE/
@@ -193,6 +155,9 @@ module SBSM
 		def get_cookie_input(key)
 			@cookie_input[key]
 		end
+		def cookie_name
+			self::class::PERSISTENT_COOKIE_NAME
+		end
 		def default_language
 			self::class::DEFAULT_LANGUAGE
 		end
@@ -200,47 +165,19 @@ module SBSM
       # used when
 			@state.direct_event
 		end
-    def process_rack(rack_request:)
+    def drb_process(app, rack_request)
       start = Time.now
       @request_path ||= rack_request.path
       rack_request.params.each { |key, val| @cgi.params.store(key, val) }
       @trans_handler.translate_uri(rack_request)
       html = @mutex.synchronize do
-        begin
-          @request_method =rack_request.request_method
-          @request_path = rack_request.path
-          logout unless @active_state
-          validator.reset_errors() if validator && validator.respond_to?(:reset_errors)
-          import_user_input(rack_request)
-          import_cookies(rack_request)
-          @state = active_state.trigger(event())
-          SBSM.debug "active_state.trigger state #{@state.object_id} remember #{persistent_user_input(:remember).inspect}"
-          #FIXME: is there a better way to distinguish returning states?
-          #       ... we could simply refuse to init if event == :sort, but that
-          #       would not solve the problem cleanly, I think.
-          unless(@state.request_path)
-            @state.request_path = @request_path
-            @state.init
-          end
-          unless @state.volatile?
-            SBSM.debug "Changing from #{@active_state.object_id} to state #{@state.class} #{@state.object_id} remember #{persistent_user_input(:remember).inspect}"
-            @active_state = @state
-            @attended_states.store(@state.object_id, @state)
-          else
-            SBSM.debug "Stay in volatile state #{@state.object_id}"
-          end
-          @zone = @active_state.zone
-          @active_state.touch
-          cap_max_states
-        ensure
-          @user_input_imported = false
-        end
+        process(rack_request)
         to_html
       end
       (@@stats[@request_path] ||= []).push(Time.now - start)
       html
     rescue  => err
-        SBSM.info "Error in process_rack #{err.backtrace[0..5].join("\n")}"
+        SBSM.info "Error in drb_process #{err.backtrace[0..5].join("\n")}"
         raise err
     end
 		def error(key)
@@ -273,13 +210,13 @@ module SBSM
 		end
 		def import_cookies(request)
 			reset_cookie()
+      return if request.cookies.is_a?(DRb::DRbUnknown)
       if(cuki_str = request.cookies[self::class::PERSISTENT_COOKIE_NAME])
         SBSM.debug "cuki_str #{self::class::PERSISTENT_COOKIE_NAME} #{cuki_str}"
-        request.cookies.each do |key, val|
-          key_sym = key.intern
-          valid = @validator.validate(key_sym, val)
-          @cookie_input.store(key_sym, valid) if valid
-        end
+        eval(cuki_str).each { |key, val|
+          valid = @validator.validate(key, val)
+          @cookie_input.store(key, valid)
+        }
         SBSM.debug "@cookie_input now #{@cookie_input}"
       end
 		end
@@ -287,11 +224,13 @@ module SBSM
     @@hash_ptrn = /([^\[]+)((\[[^\]]+\])+)/
     @@index_ptrn = /[^\[\]]+/
     def import_user_input(rack_req)
+			# attempting to read the cgi-params more than once results in a
+			# DRbConnectionRefused Exception. Therefore, do it only once...
 			return if(@user_input_imported)
       hash = rack_req.env.merge rack_req.params
       hash.merge! rack_req.POST if rack_req.POST
       hash.delete('rack.request.form_hash')
-      # SBSM.debug "hash has #{hash.size } items #{hash.keys}"
+      SBSM.debug "hash has #{hash.size } items #{hash.keys}"
       hash.each do |key, value|
         next if /^rack\./.match(key)
 				index = nil
@@ -359,7 +298,7 @@ module SBSM
 			!@user.is_a?(@unknown_user_class)
 		end
 		def login
-			if(user = (@app && @app.respond_to?(:login) && @app.login(self)))
+			if(user = @app.login(self))
           SBSM.debug "user is #{user}  #{request_path.inspect}"
 				@user = user
       else
@@ -368,8 +307,8 @@ module SBSM
 		end
 		def logout
 			__checkout
-			@user = unknown_user()
-      @active_state = @state = self::class::DEFAULT_STATE.new(self, @user)
+			@user = @app.unknown_user()
+			@active_state = @state = self::class::DEFAULT_STATE.new(self, @user)
       SBSM.debug "logout #{request_path.inspect} setting @state #{@state.object_id} #{@state.class} remember #{persistent_user_input(:remember).inspect}"
       @state.init
 			@attended_states.store(@state.object_id, @state)
@@ -400,6 +339,8 @@ module SBSM
 		end
 		def http_headers
 			@state.http_headers
+    rescue DRb::DRbConnError
+      raise
 		rescue NameError, StandardError => err
       SBSM.info "NameError, StandardError: #@request_path"
 			{'Content-Type' => 'text/plain'}
@@ -426,6 +367,40 @@ module SBSM
 				@persistent_user_input.store(key, value)
 			else
 				@persistent_user_input[key]
+			end
+		end
+    def process(rack_request)
+      begin
+        @request_method =rack_request.request_method
+        @request = rack_request
+        @request_method ||= @request.request_method
+        @request_path = @request.path
+        @validator.reset_errors() if @validator && @validator.respond_to?(:reset_errors)
+        import_user_input(rack_request)
+        import_cookies(rack_request)
+        @state = active_state.trigger(event())
+        SBSM.debug "active_state.trigger state #{@state.object_id} remember #{persistent_user_input(:remember).inspect}"
+        #FIXME: is there a better way to distinguish returning states?
+        #       ... we could simply refuse to init if event == :sort, but that
+        #       would not solve the problem cleanly, I think.
+        unless(@state.request_path)
+          @state.request_path = @request_path
+          @state.init
+        end
+        unless @state.volatile?
+          SBSM.debug "Changing from #{@active_state.object_id} to state #{@state.object_id} remember #{persistent_user_input(:remember).inspect}"
+          @active_state = @state
+          @attended_states.store(@state.object_id, @state)
+        else
+          SBSM.debug "Stay in volatile state #{@state.object_id}"
+        end
+        @zone = @active_state.zone
+        @active_state.touch
+        cap_max_states
+      rescue DRb::DRbConnError
+        raise
+			ensure
+				@user_input_imported = false
 			end
 		end
 		def reset
@@ -466,6 +441,8 @@ module SBSM
 			else
 				self::class::SERVER_NAME
 			end
+		rescue DRb::DRbConnError
+			@server_name = self::class::SERVER_NAME
 		end
 		def state(event=nil)
 			@active_state
@@ -476,6 +453,8 @@ module SBSM
     end
 		def to_html
 			@state.to_html(cgi)
+    rescue DRb::DRbConnError
+      raise
 		end
     def user_agent
       @user_agent ||= (@request.user_agent if @request.respond_to?(:user_agent))
@@ -514,10 +493,11 @@ module SBSM
 			@state.warning? if @state.respond_to?(:warning?)
 		end
     # CGI::SessionHandler compatibility
-    # https://ruby-doc.org/stdlib-2.3.1/libdoc/cgi/rdoc/CGI.html
-    # should restore the values from a file, we return simply nothing
     def restore
-      {}
+      hash = {
+        :proxy	=>	self,
+      }
+      hash
     end
     def update
       # nothing

@@ -42,7 +42,7 @@ module SBSM
 				infect(newstate)
       end
       newstate
-    rescue RangeError
+    rescue DRb::DRbError, RangeError
       @session.logout
       home
     end

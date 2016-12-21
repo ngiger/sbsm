@@ -1,0 +1,50 @@
+#!/usr/bin/env ruby
+root_dir = File.expand_path(File.join(__FILE__, '..', '..'))
+$LOAD_PATH << File.join(root_dir, 'test')
+require 'simple_sbsm'
+@test_logger = ChronoLogger.new(File.join(root_dir, 'test.log'))
+SBSM.logger=@test_logger
+SBSM.info msg = "Starting DRb #{TEST_APP_URI}"
+
+class Server
+  def initialize
+    at_exit { exit }
+    @drb = Thread.new do
+      begin
+        SBSM.info msg= "starting  SimpleSBSM on #{TEST_APP_URI.to_s}"
+        puts msg
+        DRb.stop_service
+        DRb.start_service(TEST_APP_URI.to_s, Demo::SimpleSBSM.new)
+        DRb.thread.join
+      rescue Exception => e
+        $stdout.puts e.class
+        $stdout.puts e.message
+        $stdout.puts e.backtrace
+        raise
+      end
+    end
+    SBSM.info msg =  "Started #{TEST_APP_URI} my pid is #{Process.pid}"
+    @drb.abort_on_exception = true
+    SBSM.info "spawn test/config.ru #{File.exist?('test/config.ru')}"
+    @pid = Process.spawn('bundle', 'exec', 'rackup', 'test/config.ru', { :err => ['test.log', 'w+'],  :out => ['test_rack.log', 'w+']})
+    SBSM.info msg =  "Started RACK PID #{@pid}"
+    trap('INT') {  puts "trapped int #{__LINE__}"; @drb.exit }
+  end
+
+  def exit
+    msg =  "stop_davaz_and_browser #{__LINE__} ensure killing @pid: #{@pid.inspect}"
+    puts msg; SBSM.info msg
+    DRb.stop_service
+    if @pid
+      Process.kill("QUIT", @pid)
+      Process.wait(@pid)
+      @pid = nil
+    end
+  end
+end
+
+@server = Server.new
+trap('INT') { puts "trapped int int #{__LINE__}"; raise 'exit' }
+while true do sleep 1 end
+puts "Finished server"
+

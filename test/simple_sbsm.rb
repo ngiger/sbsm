@@ -1,7 +1,12 @@
 #!/usr/local/bin/ruby
 # Niklaus Giger, November 2016
 # A simple example on how to use SBSM with webrick
+require 'drb/drb'
 require 'sbsm/logger'
+require 'sbsm/session'
+require 'sbsm/validator'
+require 'sbsm/drbserver'
+require 'sbsm/state'
 require 'sbsm/app'
 
 root_dir = File.expand_path(File.join(__FILE__, '..', '..'))
@@ -20,10 +25,6 @@ FEEDBACK_HTML_CONTENT = 'Give us your feedback about SBSM'
 CONFIRM_HTML_CONTENT = 'Please confirm your feedback'
 SENT_HTML_CONTENT = 'Thanks for you feedback! Hope to see you soon'
 
-begin
-  require 'pry'
-rescue LoadError
-end
 
 module Demo
   class GlobalState < SBSM::State
@@ -50,7 +51,7 @@ module Demo
     }
     @@class_counter = 0
     def initialize(session, user)
-      SBSM.info "HomeState #{session}"
+      SBSM.info "HomeState #{session} DRb.front is #{DRb.front}"
       @session = session
       @member_counter = 0
       super(session, user)
@@ -140,7 +141,7 @@ module Demo
     def ready?
       unless @email
         false
-      elseustomized
+      else
         true
       end
     end
@@ -216,27 +217,19 @@ module Demo
   end
   class Session < SBSM::Session
     DEFAULT_STATE    = HomeState
-  end
-
-  class SimpleSBSM < SBSM::RackInterface
-    def initialize
-      SBSM.info "SimpleSBSM.new"
-      super(app: self)
+    def initialize(key, app, validator=Validator.new)
+      SBSM.info "Session #{app}"
+      super(key, app, validator)
     end
   end
-  class SimpleRackInterface < SBSM::RackInterface
+  class SimpleSBSM < SBSM::App
     SESSION = Session
-
-    def initialize(validator: SBSM::Validator.new,
-                   trans_handler: SBSM::TransHandler.instance,
-                   cookie_name: nil,
-                   session_class: SESSION)
-      SBSM.info "SimpleRackInterface.new SESSION #{SESSION}"
-      super(app: SimpleSBSM,
-            validator: validator,
-            trans_handler: trans_handler,
-            cookie_name: cookie_name,
-            session_class: session_class)
+    attr_reader :drb_uri
+    def initialize(cookie_name: nil)
+      @drb_uri = TEST_APP_URI
+      SBSM.info "SimpleSBSM.new"
+      super(:app => self, :validator => Validator.new, :trans_handler => SBSM::TransHandler.instance, :drb_uri => TEST_APP_URI,
+            cookie_name: cookie_name)
     end
   end
 end
