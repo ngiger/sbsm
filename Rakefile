@@ -28,10 +28,10 @@ desc "create RDoc documentation"
 
 task :rdoc do
   cmd = "bundle exec rdoc --exclude='/coverage|vendor|test|data|etc|Manifest|.*.lock|.*.css|.*.js|.*.gemspec|.*.patch/' --include=lib" +
-      " --main=lib/sbsm.rb --title='SBSM: a framework for state based session management'"
+      " --main=lib/sbsm.rb --title='SBSM: a framework for state based session management' --op=rdoc"
   puts cmd
   res = system(cmd)
-  puts "Running test/suite.rb returned #{res.inspect}. Output is found in the doc sub-directory"
+  puts "Running test/suite.rb returned #{res.inspect}. Output is found in the rdoc sub-directory"
   exit 1 unless res
 end
 

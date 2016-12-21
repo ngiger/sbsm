@@ -124,7 +124,7 @@ module SBSM
 			end
 		end
     def extend(mod)
-      binding.pry
+      require 'pry'; binding.pry
       if(mod.constants.include?(:VIRAL))
         @viral_modules.push(mod)
       end

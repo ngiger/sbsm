@@ -1,3 +1,12 @@
+* TODO: Add unit tests for viral states (needed for bbmb)
+
+=== 1.3.6-rc2/21.12.2016
+* TODO: Fix 8 failing unit tests
+* Made SBSM multithreading optional. Defaults to off
+* Answer with doc_root + '/index.html' if request-path is '/'
+* Introduce RackInterface to separate concerns between SBSM::App which is member variable of the SBSM::Session
+* An the RackInterface which is served as a Rack App object
+
 === 1.3.5 /14.12.2016
 * Refactored sbsm to work without DRb
 * Added test/config.ru to be able to run tests via wrk

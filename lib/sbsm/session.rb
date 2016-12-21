@@ -50,6 +50,7 @@ module SBSM
 		MAX_STATES = 4
 		SERVER_NAME = nil
     UNKNOWN_USER = UnknownUser
+    @@mutex = Mutex.new
     def Session.reset_stats
       @@stats = {}
     end
@@ -95,7 +96,7 @@ module SBSM
     #
     # * +validator+ -         A Ruby class overriding the SBSM::Validator class
     # * +trans_handler+ -     A Ruby class overriding the SBSM::TransHandler class
-    # * +unknown_user+ -      A Ruby class overriding the SBSM::UnknownUser class
+    # * +known_user+ -        Object wt SBSM::KnownUser class
     # * +cookie_name+ -       The cookie to save persistent user data
     #
     # === Examples
@@ -106,8 +107,9 @@ module SBSM
                    trans_handler: nil,
                    validator: nil,
                    unknown_user: nil,
-                   cookie_name: nil)
-      SBSM.info "initialize th #{trans_handler} validator #{validator}"
+                   cookie_name: nil,
+                   multi_threaded: false)
+      SBSM.info "initialize th #{trans_handler} validator #{validator} app #{app.class}"
       @app = app
       @unknown_user = unknown_user
       @unknown_user ||=  self.class::UNKNOWN_USER
@@ -119,6 +121,7 @@ module SBSM
       fail "invalid trans_handler #{@trans_handler}" unless @trans_handler.is_a?(SBSM::TransHandler)
       @cookie_name =  cookie_name
       @cookie_name ||= self.class::PERSISTENT_COOKIE_NAME
+      @@cookie_name = @cookie_name
       @attended_states = {}
       @persistent_user_input = {}
       touch()
@@ -128,9 +131,17 @@ module SBSM
       @unknown_user_class
       @unknown_user_class = @unknown_user.class
       @variables = {}
-      @mutex = Mutex.new
       @cgi = CGI.initialize_without_offline_prompt('html4')
-      SBSM.debug "session initialized #{self} with @cgi #{@cgi}"
+      @multi_threaded = multi_threaded
+      @mutex = multi_threaded ? Mutex.new: @@mutex
+      @active_thread = nil
+      SBSM.debug "session initialized #{self} with @cgi #{@cgi} multi_threaded #{multi_threaded} app #{app.object_id}"
+    end
+    def self.get_cookie_name
+      @@cookie_name
+    end
+    def method_missing(symbol, *args, &block) # Replaces old dispatch to DRb
+      @app.send(symbol, *args, &block)
     end
     def unknown_user
       @unknown_user_class.new
@@ -159,7 +170,6 @@ module SBSM
 			@persistent_user_input.store(:language, lang)
 			@valid_input.clear
 			@unsafe_input.clear
-			@active_thread = nil
 			true
 		end
     @@msie_ptrn = /MSIE/
@@ -259,17 +269,17 @@ module SBSM
       age(now) > EXPIRES
 		end
 		def force_login(user)
-      binding.pry
 			@user = user
 		end
 		def import_cookies(request)
 			reset_cookie()
       if(cuki_str = request.cookies[self::class::PERSISTENT_COOKIE_NAME])
         SBSM.debug "cuki_str #{self::class::PERSISTENT_COOKIE_NAME} #{cuki_str}"
-        eval(cuki_str).each { |key, val|
-          valid = @validator.validate(key, val)
-          @cookie_input.store(key, valid)
-        }
+        request.cookies.each do |key, val|
+          key_sym = key.intern
+          valid = @validator.validate(key_sym, val)
+          @cookie_input.store(key_sym, valid) if valid
+        end
         SBSM.debug "@cookie_input now #{@cookie_input}"
       end
 		end
@@ -281,7 +291,7 @@ module SBSM
       hash = rack_req.env.merge rack_req.params
       hash.merge! rack_req.POST if rack_req.POST
       hash.delete('rack.request.form_hash')
-      SBSM.debug "hash has #{hash.size } items #{hash.keys}"
+      # SBSM.debug "hash has #{hash.size } items #{hash.keys}"
       hash.each do |key, value|
         next if /^rack\./.match(key)
 				index = nil
@@ -406,6 +416,8 @@ module SBSM
 			@valid_input.keys
 		end
 		def navigation
+      ## return [] unless @user.respond_to?(:navigation) # eternal loop??
+      require 'pry'; binding.pry unless @user.respond_to?(:navigation)
 			@user.navigation
 		end
 		def passthru(*args)
