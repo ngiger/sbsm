@@ -218,14 +218,25 @@ module Demo
     DEFAULT_STATE    = HomeState
   end
 
-  class SimpleSBSM < SBSM::App
-    SESSION = Session
-    def initialize(cookie_name: nil)
+  class SimpleSBSM < SBSM::RackInterface
+    def initialize
       SBSM.info "SimpleSBSM.new"
-      super(validator: Validator.new,
-            trans_handler: SBSM::TransHandler.instance,
-            session_class: SESSION,
-            cookie_name: cookie_name)
+      super(app: self)
+    end
+  end
+  class SimpleRackInterface < SBSM::RackInterface
+    SESSION = Session
+
+    def initialize(validator: SBSM::Validator.new,
+                   trans_handler: SBSM::TransHandler.instance,
+                   cookie_name: nil,
+                   session_class: SESSION)
+      SBSM.info "SimpleRackInterface.new SESSION #{SESSION}"
+      super(app: SimpleSBSM,
+            validator: validator,
+            trans_handler: trans_handler,
+            cookie_name: cookie_name,
+            session_class: session_class)
     end
   end
 end

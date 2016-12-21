@@ -12,7 +12,7 @@ require 'simple_sbsm'
 
 ENV['RACK_ENV'] = 'test'
 ENV['REQUEST_METHOD'] = 'GET'
-RUN_ALL_TESTS = true
+RUN_ALL_TESTS=true unless defined?(RUN_ALL_TESTS)
 
 # Overriding some stuff from the simple_sbsm
 module Demo
@@ -106,21 +106,28 @@ module Demo
       defined?(@@login_visited) ? @@login_visited : :not_initialized
     end
   end
-
   class CustomizedSBSM < SBSM::App
+    def initialize
+      SBSM.info "CustomizedSBSM.new"
+    end
+  end
+
+  class CustomizedRackInterface < SBSM::RackInterface
     SESSION = CustomizedSession
+
     def initialize(validator: CustomizedValidator.new,
                    trans_handler: SBSM::TransHandler.instance,
                    cookie_name: nil,
                    session_class: SESSION)
-      SBSM.info "CustomizedSBSM.new SESSION #{SESSION}"
-
-      super(validator: validator,
+      SBSM.info "CustomizedRackInterface.new SESSION #{SESSION}"
+      super(app: CustomizedSBSM.new,
+            validator: validator,
             trans_handler: trans_handler,
             cookie_name: cookie_name,
             session_class: session_class)
     end
   end
+
 end
 
 class CustomizedAppInvalidValidator < Minitest::Test
@@ -128,12 +135,12 @@ class CustomizedAppInvalidValidator < Minitest::Test
   attr_reader :app
 
   def test_raise_exeption_if_class
-    @app = Demo::CustomizedSBSM.new(validator: ::SBSM::Validator)
+    @app = Demo::CustomizedRackInterface.new(validator: ::SBSM::Validator)
     assert_raises {  get '/' do   end }
   end
 
   def test_valid_if_validator
-    @app = Demo::CustomizedSBSM.new(validator: ::SBSM::Validator.new)
+    @app = Demo::CustomizedRackInterface.new(validator: ::SBSM::Validator.new)
     get '/' do   end
   end
 end if RUN_ALL_TESTS
@@ -143,12 +150,12 @@ class CustomizedAppInvalidTranshandler < Minitest::Test
   attr_reader :app
 
   def test_raise_exeption_if_class
-    @app = Demo::CustomizedSBSM.new(trans_handler: ::SBSM::TransHandler)
+    @app = Demo::CustomizedRackInterface.new(trans_handler: ::SBSM::TransHandler)
     assert_raises {  get '/' do   end }
   end
 
   def test_valid_if_validator_instance
-    @app = Demo::CustomizedSBSM.new(trans_handler: ::SBSM::TransHandler.instance)
+    @app = Demo::CustomizedRackInterface.new(trans_handler: ::SBSM::TransHandler.instance)
     get '/' do   end
   end
 end if RUN_ALL_TESTS
@@ -157,7 +164,7 @@ class CustomizedAppSessionValidatorLnf < Minitest::Test
   include Rack::Test::Methods
   attr_reader :app
   def setup
-    @app = Demo::CustomizedSBSM.new
+    @app = Demo::CustomizedRackInterface.new
   end
 
   def test_customized_active_state
@@ -207,12 +214,15 @@ class CustomizedAppSessionValidatorLnf < Minitest::Test
   end
 
   def test_customized_cookie_name
-    @app = Demo::CustomizedSBSM.new(cookie_name: TEST_COOKIE_NAME)
+    my_cookey_name = 'my-cookie-name'
+    @app = Demo::CustomizedRackInterface.new(cookie_name: my_cookey_name)
     get '/' do
     end
     assert last_response.ok?
     # TEST_COOKIE_NAME set via param to app
-    assert_equal TEST_COOKIE_NAME, last_response.get_header('Set-Cookie').split("\n").first.split('=').first
+    cookie = last_response.get_header('Set-Cookie').split("\n").find_all{|x| x.index(my_cookey_name)}
+    assert_equal 1, cookie.size
+    assert_match my_cookey_name, cookie.first
   end if RUN_ALL_TESTS
 end
 
@@ -220,13 +230,16 @@ class CustomizedAppCookieName < Minitest::Test
   include Rack::Test::Methods
   attr_reader :app
   def setup
-    @app = SBSM::App.new(cookie_name: Demo::DEMO_PERSISTENT_COOKIE_NAME)
+    @sbsm_app = SBSM::App.new
+    @app = SBSM::RackInterface.new(app: @sbsm_app, cookie_name: Demo::DEMO_PERSISTENT_COOKIE_NAME)
   end
   def test_customized_cookie_name
     get '/' do
     end
     assert last_response.ok?
-    assert_equal Demo::DEMO_PERSISTENT_COOKIE_NAME, last_response.get_header('Set-Cookie').split("\n").first.split('=').first
+    cookie = last_response.get_header('Set-Cookie').split("\n").find_all{|x| x.index(Demo::DEMO_PERSISTENT_COOKIE_NAME)}
+    assert_equal 1, cookie.size
+    assert_match Demo::DEMO_PERSISTENT_COOKIE_NAME, cookie.first
   end if RUN_ALL_TESTS
 end
 

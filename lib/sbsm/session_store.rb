@@ -56,13 +56,15 @@ module SBSM
                    session_class: nil,
                    validator: nil,
                    cookie_name: nil,
-                   unknown_user: nil)
+                   unknown_user: nil,
+                   multi_threaded: nil)
       fail "You must specify an app!" unless app
       @sessions = {}
       @mutex = Mutex.new
       @cleaner = run_cleaner if(self.class.const_get(:RUN_CLEANER))
       @admin_threads = ThreadGroup.new
       @async = ThreadGroup.new
+      @app = app
       @system = persistence_layer
       @persistence_layer = persistence_layer
       @cookie_name = cookie_name

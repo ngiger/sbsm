@@ -33,11 +33,17 @@ require 'mimemagic'
 
 module SBSM
   ###
-  # App a base class for Webrick server
+  # App as a member of session
   class App
 
-    OPTIONS = [ :app, :config_file, :trans_handler, :validator, :persistence_layer, :server_uri, :unknown_user]
-    OPTIONS.each{ |opt| eval "attr_reader :#{opt}" }
+    def initialize()
+      SBSM.info "initialize"
+    end
+  end
+
+  class RackInterface
+    attr_accessor :session # thread variable!
+    SESSION_ID = '_session_id'
 
     # Base class for a SBSM based WebRick HTTP server
     # * offer a call(env) method form handling the WebRick requests
@@ -45,35 +51,40 @@ module SBSM
     #
     # === optional arguments
     #
+    # * +app+ -               A Ruby class used by the session
     # * +validator+ -         A Ruby class overriding the SBSM::Validator class
     # * +trans_handler+ -     A Ruby class overriding the SBSM::TransHandler class
     # * +session_class+ -     A Ruby class overriding the SBSM::Session class
     # * +unknown_user+ -      A Ruby class overriding the SBSM::UnknownUser class
     # * +persistence_layer+ - Persistence Layer to use
     # * +cookie_name+ -       The cookie to save persistent user data
+    # * +multi_threaded+ -    Allow multi_threaded SBSM (default is false)
     #
     # === Examples
     # Look at steinwies.ch
     # * https://github.com/zdavatz/steinwies.ch (simple, mostly static files, one form, no persistence layer)
     #
-    def initialize(validator: nil,
+    def initialize(app:,
+                   validator: nil,
                    trans_handler:  nil,
                    session_class: nil,
                    persistence_layer: nil,
                    unknown_user: nil,
-                   cookie_name: nil)
+                   cookie_name: nil,
+                   multi_threaded: nil
+                 )
       @@last_session = nil
-      SBSM.info "initialize validator #{validator} th #{trans_handler} cookie #{cookie_name} session #{session_class}"
-      @session_store = SessionStore.new(persistence_layer: persistence_layer,
+      @app = app
+      SBSM.info "initialize validator #{validator} th #{trans_handler} cookie #{cookie_name} session #{session_class} app #{app} multi_threaded #{multi_threaded}"
+      @session_store = SessionStore.new(app: app,
+                                        persistence_layer: persistence_layer,
                                         trans_handler: trans_handler,
                                         session_class: session_class,
                                         cookie_name: cookie_name,
                                         unknown_user: unknown_user,
-                                        app: self,
-                                        validator: validator)
+                                        validator: validator,
+                                        multi_threaded: multi_threaded)
     end
-
-    SESSION_ID = '_session_id'
 
     def last_session
       @@last_session
@@ -97,17 +108,14 @@ module SBSM
       end
 
       return [400, {}, []] if /favicon.ico/i.match(request.path)
-      # https://www.tutorialspoint.com/ruby/ruby_cgi_sessions.htm
       args = {
         'database_manager'  =>  @session_store,
         'session_path'      =>  '/',
         @cookie_name => session_id,
       }
-      session = @session_store[session_id]
-      session.app ||= self
+      Thread.current.thread_variable_set(:session, @session_store[session_id])
+      session = Thread.current.thread_variable_get(:session)
       SBSM.debug "starting session_id #{session_id}  session #{session.class} #{request.path}: cookies #{@cookie_name} are #{request.cookies} @cgi #{@cgi.class}"
-      @cgi = CGI.initialize_without_offline_prompt('html4') unless @cgi
-      session = CGI::Session.new(@cgi, args) unless session
       res = session.process_rack(rack_request: request)
       response.write res
       response.headers['Content-Type'] ||= 'text/html; charset=utf-8'
@@ -116,10 +124,17 @@ module SBSM
         response.status = result.last.to_i
         response.headers.delete(result.first)
       end
-      response.set_cookie(session.cookie_name, :value =>  session.cookie_input)
-      response.set_cookie(SESSION_ID, :value => session_id)
+      session.cookie_input.each do |key, value|
+        response.set_cookie(key, value)
+      end
+      response.set_cookie(SESSION_ID, session_id)
+      response.set_cookie(SBSM::Session.get_cookie_name, session_id)
       @@last_session = session
-      SBSM.debug "finish session_id #{session_id}: header with cookies #{response.headers} from #{session.cookie_input}"
+      if response.headers['Set-Cookie'].to_s.index(session_id)
+        SBSM.debug "finish session_id.1 #{session_id}: matches response.headers['Set-Cookie']"
+      else
+        SBSM.debug "finish session_id.2 #{session_id}: headers #{response.headers}"
+      end
       response.finish
     end
 

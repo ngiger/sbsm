@@ -46,10 +46,7 @@ class StubSessionApp < SBSM::App
   attr_accessor :trans_handler, :validator
   SESSION = StubSessionSession
   def initialize(args = {})
-    args[:session_class] ||= StubSessionSession
-    args[:validator] ||= StubSessionValidator.new
-    args[:unknown_user] ||= StubSessionUnknownUser.new
-    super(args)
+    super()
   end
   def login(session)
     false
@@ -136,10 +133,7 @@ class StubSessionSession < SBSM::Session
 		'sbb'	=>	'bbs',
 	}
 	def initialize(app: app)
-    args = { :app => app}
-    args[:app]       ||= StubSessionApp.new
-    args[:validator] ||= StubSessionValidator.new
-    super(args)
+    super(app: app, validator:  StubSessionValidator.new)
 		persistent_user_input = {}
 	end
 	def persistent_user_input(key)
@@ -155,10 +149,24 @@ class TestSession < Minitest::Test
     @session = StubSessionWithView.new(app: @app,
                            validator: StubSessionValidator.new,
                            unknown_user: StubSessionUnknownUser.new)
-		@request = StubSessionRequest.new
+    @request = StubSessionRequest.new
 		@state = StubSessionState.new(@session, nil)
 	end
-if true
+
+  def test_cookies
+    c_name =  SBSM::Session::PERSISTENT_COOKIE_NAME
+    c_value = "remember=63488f94c90813200f29e1a60de9a479ad52e71758f48e612e9f6390f80c7b7c\nname=juerg%40davaz.com\nlanguage=en"
+    @request.cookies[:remember] = 'my_remember_value'
+    @request.cookies[:language] = 'en'
+    @request.cookies['_session_id'] = '10e524151d7f0da819f4222ecc1'
+    @request.cookies[c_name] = 'my_cookie_id'
+    @request.set_header('Set-Cookie', c_value)
+    @session.process_rack(rack_request: @request)
+    assert_equal([:remember, :language, :_session_id, c_name.to_sym], @session.cookie_input.keys)
+    skip "Don't know how to test persistent_user_input"
+    assert_equal('@session.valid_input', @session.persistent_user_input(:language))
+    assert_equal('@session.valid_input', @session.valid_input)
+  end
   def test_user_input
     @request["foo"] = "bar"
     @request["baz"] = "zuv"
@@ -419,5 +427,4 @@ if true
 		}
 		assert_equal('gcc', session.flavor)
 	end
-end
 end
