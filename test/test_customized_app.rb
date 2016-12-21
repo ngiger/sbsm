@@ -13,7 +13,7 @@ require 'simple_sbsm'
 ENV['RACK_ENV'] = 'test'
 ENV['REQUEST_METHOD'] = 'GET'
 RUN_ALL_TESTS=true unless defined?(RUN_ALL_TESTS)
-
+if false
 # Overriding some stuff from the simple_sbsm
 module Demo
   class AboutState < GlobalState
@@ -243,3 +243,4 @@ class CustomizedAppCookieName < Minitest::Test
   end if RUN_ALL_TESTS
 end
 
+end

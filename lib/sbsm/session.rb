@@ -57,6 +57,8 @@ module SBSM
     end
     reset_stats
     @@stats_ptrn = /./
+    @@mutex = Mutex.new
+    puts "Added global mutex in SBSM::session"
     def Session.show_stats ptrn=@@stats_ptrn
       if ptrn.is_a?(String)
         ptrn = /#{ptrn}/i
@@ -102,7 +104,6 @@ module SBSM
       logout()
       @unknown_user_class = @user.class
       @variables = {}
-      @mutex = Mutex.new
       @cgi = CGI.initialize_without_offline_prompt('html4')
       SBSM.debug "session initialized #{self} key #{key} app #{app.class}  #{@validator.class} th #{@trans_handler.class} with @cgi #{@cgi}"
       super(app)
@@ -170,7 +171,7 @@ module SBSM
       @request_path ||= rack_request.path
       rack_request.params.each { |key, val| @cgi.params.store(key, val) }
       @trans_handler.translate_uri(rack_request)
-      html = @mutex.synchronize do
+      html = @@mutex.synchronize do
         process(rack_request)
         to_html
       end
