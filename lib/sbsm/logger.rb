@@ -37,9 +37,11 @@ module SBSM
   def self.info(msg)
     info = "#{File.basename(caller[0])} #{msg}"
     @@logger.info(info) if @@logger
+    puts info if defined?(MiniTest)
   end
   def self.debug(msg)
     info = "#{File.basename(caller[0])} #{msg}"
     @@logger.debug(info) if @@logger
+    puts info if defined?(MiniTest)
   end
 end

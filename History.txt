@@ -1,3 +1,8 @@
+=== 1.3.6-rc3/31.03.2017
+* Replaced session_store by Rack::Session::Pool
+* Improved unit tests
+* TODO: Add unit tests for viral states (needed for bbmb)
+
 === 1.3.6-rc2/21.12.2016
 * TODO: Fix 8 failing unit tests
 * Made SBSM multithreading optional. Defaults to off

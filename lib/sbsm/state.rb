@@ -74,6 +74,7 @@ module SBSM
 			@warnings = []
       @viral_modules = []
 			touch()
+
 		end
     def init
     end
@@ -124,6 +125,7 @@ module SBSM
 			end
 		end
     def extend(mod)
+      SBSM.debug "extend using #{mod}"; binding.pry
       if(mod.constants.include?(:VIRAL))
         @viral_modules.push(mod)
       end
@@ -147,6 +149,7 @@ module SBSM
 			value.nil? || (value.respond_to?(:empty?) && value.empty?)
 		end
 		def previous=(state)
+      # ???? state.request_path ||= @session.request_path if state && @session
 			if(@previous.nil? && state.respond_to?(:next=))
 				state.next = self
 				@previous = state
@@ -175,7 +178,7 @@ module SBSM
 		end
 		def trigger(event)
       if(@redirected)
-        SBSM.debug "reached State::trigger"
+        SBSM.debug "reached State::trigger @redirected is true => false"
         @redirected = false
       else
         @errors = {}
@@ -242,6 +245,7 @@ module SBSM
       view
 		end
 		def volatile?
+      puts "sbsm volatile? #{self::class::VOLATILE} from #{self::class}"
 			self::class::VOLATILE
 		end
 		def zone

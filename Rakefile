@@ -37,7 +37,7 @@ end
 
 
 desc "Run tests"
-task :default => :test
+task :default => [:gem, :test]
 
 task :test do
   log_file = 'suite.log'

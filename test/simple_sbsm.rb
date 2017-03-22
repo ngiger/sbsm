@@ -34,6 +34,7 @@ module Demo
       about
       redirect
       feedback
+      confirm
     }
     STRINGS = %i{
       anrede
@@ -93,6 +94,31 @@ module Demo
     end
     def to_html(cgi)
       REDIRECT_HTML_CONTENT
+    end
+  end
+  class Feedback
+    def initialize(model, session)
+      SBSM.info "#{__LINE__} Feedback #{session.class} model #{model.class}"
+      @session = session
+    end
+    def http_headers
+      {
+      "Content-Type"  => "text/html",
+      "Cache-Control" => "no-cache, max-age=3600, must-revalidate",
+    }
+    end
+    def to_html(cgi)
+      res = FEEDBACK_HTML_CONTENT
+      res += '<INPUT class="button" onclick="location.href=&#39;/de/back&#39;" value="Zurück"' +
+          'type="button" name="back" onClick="document.location.href=&#39;http://steinwies.ngiger.ch/en/page/home/&#39;;">'
+      res += %(<DIV style="display:none">
+<INPUT TYPE="hidden" NAME="flavor">
+<INPUT TYPE="hidden" NAME="language" VALUE="en">
+<INPUT NAME="event" ID="event" VALUE="sendmail" TYPE="hidden">
+<INPUT TYPE="hidden" NAME="state_id" VALUE="#{@session.state.object_id}">
+</DIV>)
+      SBSM.info "to_html state_id #{@session.state.object_id}"
+      res
     end
   end
   class FeedbackMail
@@ -169,31 +195,52 @@ module Demo
   class ConfirmState < GlobalState
     DIRECT_EVENT = :confirm
 
+    def initialize(session, model)
+      SBSM.info "state/confirm.rb #{__LINE__} ConfirmState #{session.class} model #{model.class}"
+      super(session, model)
+    end
     def sendmail
+      SBSM.info('ConfirmState sendmail')
       @model.do_sendmail
       SentState.new(@session, nil)
     end
 
     def back
+      SBSM.info('ConfirmState back')
       KontaktState.new(@session, @model)
     end
     def to_html(cgi)
+      SBSM.info('ConfirmState to_html')
       CONFIRM_HTML_CONTENT
     end
   end
   class FeedbackState < GlobalState
     DIRECT_EVENT = :feedback
-
+    VIEWXX = Feedback
     def initialize(session, model)
-      SBSM.info "state/feedback.rb #{__LINE__} Steinwies init #{session.class} model #{model.class}"
+      @attributes = {}
+      @attributes['value'] = 'FeedbackState'
+      @attributes['type'] = 'submit'
+      SBSM.info "state/feedback.rb #{__LINE__} FeedbackState #{session.class} model #{model.class} @attributes #{@attributes}"
       super(session, model)
     end
     def to_html(cgi)
-      FEEDBACK_HTML_CONTENT
-    end
+      res = FEEDBACK_HTML_CONTENT
+      res += '<INPUT class="button" onclick="location.href=&#39;/de/back&#39;" value="Zurück"' +
+          'type="button" name="back" onClick="document.location.href=&#39;http://steinwies.ngiger.ch/en/page/home/&#39;;">'
+      res += %)<DIV style="display:none">
+<INPUT TYPE="hidden" NAME="flavor">
+<INPUT TYPE="hidden" NAME="language" VALUE="en">
+<INPUT NAME="event" ID="event" VALUE="sendmail" TYPE="hidden">
+<INPUT TYPE="hidden" NAME="state_id" VALUE="#{@session.state.object_id}">
+</DIV>)
+      SBSM.info "FeedbackState to_html state_id #{@session.state.object_id}"
+      res
+    end # if false
     def confirm
+      binding.pry
       mail = FeedbackMail.new(@session)
-      puts "state/feedback.rb #{__LINE__} confirm #{mail.inspect} #{mail.ready?.inspect}"
+      SBSM.info "state/feedback.rb #{__LINE__} confirm #{mail.inspect} #{mail.ready?.inspect}"
       if mail.ready?
         ConfirmState.new(@session, mail)
       else
@@ -210,12 +257,14 @@ module Demo
       :about        => Demo::AboutState,
       :redirect     => Demo::RedirectState,
       :feedback     => Demo::FeedbackState,
+      :confirm      => Demo::ConfirmState,
     }
     DIRECT_EVENT = nil
     # VIEW         = ::Demo::Home
   end
   class Session < SBSM::Session
     DEFAULT_STATE    = HomeState
+    DEFAULT_ZONE     = :page
   end
 
   class SimpleSBSM < SBSM::RackInterface
@@ -227,7 +276,7 @@ module Demo
   class SimpleRackInterface < SBSM::RackInterface
     SESSION = Session
 
-    def initialize(validator: SBSM::Validator.new,
+    def initialize(validator: Demo::Validator.new,
                    trans_handler: SBSM::TransHandler.instance,
                    cookie_name: nil,
                    session_class: SESSION)

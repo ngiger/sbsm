@@ -6,6 +6,7 @@
 module SBSM
   module Redirector
     def http_headers
+      binding.pry
       if(redirect?)
         SBSM.debug "reached Redirector::http_headers"
         @redirected = @state.redirected = true
@@ -22,6 +23,7 @@ module SBSM
       end
     end
     def redirect?
+      binding.pry
       direct = @state.direct_event
       if(direct.is_a?(Array))
         direct = direct.first
@@ -31,6 +33,7 @@ module SBSM
                  || ![direct, :sort].include?(event))
     end
     def to_html
+      binding.pry
       if(redirect?)
         SBSM.debug "reached Redirector::to_html"
         ''
