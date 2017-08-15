@@ -69,14 +69,19 @@ module Demo
       info.join("\n")
     end
   end
-  class AboutState < GlobalState
-    DIRECT_EVENT = :about
-    def initialize(session, user)
-      SBSM.info "AboutState #{session}"
-      super(session, user)
+  class AboutView
+    def initialize(model, session)
     end
     def to_html(cgi)
       'About SBSM: TDD ist great!'
+    end
+  end
+  class AboutState < GlobalState
+    DIRECT_EVENT = :about
+    VIEW = AboutView
+    def initialize(session, user)
+      SBSM.info "AboutState #{session}"
+      super(session, user)
     end
   end
   class RedirectState < GlobalState

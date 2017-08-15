@@ -16,18 +16,26 @@ RUN_ALL_TESTS=true unless defined?(RUN_ALL_TESTS)
 
 # Overriding some stuff from the simple_sbsm
 module Demo
+  class View_AboutState
+    def initialize(model, session)
+    end
+    def http_headers
+      { "foo" =>  "bar" }
+    end
+    def to_html(cgi)
+      "<br>customized to_html<br>"
+    end
+  end
+
   class AboutState < GlobalState
     DIRECT_EVENT = :about
+    VIEW = View_AboutState
     def initialize(session, user)
       SBSM.info "AboutState #{session}"
       super(session, user)
       session.login
     end
-    def http_headers
-      { "foo" =>  "bar" }
-    end
   end
-
 
   DEMO_PERSISTENT_COOKIE_NAME = 'demo-simple-sbsm'
   class Demo::CustomizedSBSM_COOKIE < SBSM::App
@@ -201,6 +209,7 @@ class CustomizedAppSessionValidatorLnf < Minitest::Test
     end
     assert last_response.ok?
     assert_equal 'bar', last_response.headers['foo']
+    assert_equal '<br>customized to_html<br>', last_response.body
   end
 
   def test_process_state

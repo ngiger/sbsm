@@ -238,6 +238,7 @@ module SBSM
       end
       model = @filter ? @filter.call(@model) : @model
       view = klass.new(model, @session)
+      byebug
       @http_headers = view.http_headers unless @http_headers
       view
 		end
