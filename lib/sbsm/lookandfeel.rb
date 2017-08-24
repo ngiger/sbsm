@@ -54,7 +54,8 @@ module SBSM
       self::class::HTML_ATTRIBUTES.fetch(key.to_sym, {}).dup rescue {}
 		end
 		def base_url
-			[@session.http_protocol + ':/', @session.server_name + ":" + @session.server_port, @language, @flavor].compact.join("/")
+      maybe_port = @session.server_port ? (":" + @session.server_port ) : ''
+			[@session.http_protocol + ':/', @session.server_name + maybe_port, @language, @flavor].compact.join("/")
 		end
 		def direct_event
 			@session.direct_event
@@ -166,7 +167,8 @@ module SBSM
       end
 		end
     def _collect_resource(base, part, rstr)
-      [ @session.http_protocol + ':/', @session.server_name + ":" + @session.server_port, base, part, rstr].flatten.compact.join('/')
+      maybe_port = @session.server_port ? (":" + @session.server_port ) : ''
+      [ @session.http_protocol + ':/', @session.server_name + maybe_port, base, part, rstr].flatten.compact.join('/')
     end
     def set_dictionary(language)
       @dictionary = self::class::DICTIONARIES[language] || {}

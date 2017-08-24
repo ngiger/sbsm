@@ -133,9 +133,12 @@ module SBSM
       super
     end
 		def http_headers
+      puts "SBSM::State http_headers mine #{@http_headers}"
       return @http_headers if @http_headers
       name = view
-      name ? view.http_headers : {}
+      result = name ? view.http_headers : {}
+      puts "SBSM::State http_headers resulting #{result}"
+      result
 		end
 		def info?
 			!@infos.empty?
@@ -238,8 +241,9 @@ module SBSM
       end
       model = @filter ? @filter.call(@model) : @model
       view = klass.new(model, @session)
-      byebug
+      puts "view '#{klass}'  @http_headers '#{@http_headers}'"
       @http_headers = view.http_headers unless @http_headers
+      puts "SBSM::State view resulting @http_headers '#{@http_headers}'"
       view
 		end
 		def volatile?
