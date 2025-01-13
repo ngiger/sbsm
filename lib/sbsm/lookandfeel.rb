@@ -99,8 +99,8 @@ module SBSM
 			if(args.size > 0)
 				result = ""
 				args.each_with_index { |text, index|
-					result << (lookup(key.to_s + index.to_s) || ' ')
-					result << text.to_s
+					result += (lookup(key.to_s + index.to_s) || ' ')
+					result += text.to_s
 				}
 				tail = lookup(key.to_s + args.size.to_s)
 				result << tail if(tail)

@@ -227,9 +227,10 @@ module SBSM
     def _validate_html(value, valid=self.class.const_get(:ALLOWED_TAGS))
 		doc = Nokogiri::HTML.parse(value.gsub(@@xml_ptrn, ''))
 		doc.elements.each do |element|
-			unless( element.is_a?(Nokogiri::XML::Text) ||
+			unless( element.is_a?(Nokogiri::XML::Element) ||
 					(element.respond_to?(:name) \
 					&& valid.include?(element.name.downcase)))
+			element.swap _validate_html(element.inner_html.to_s)
 			end
 		end
 		result = ''
