@@ -15,7 +15,7 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
   spec.metadata["changelog_uri"] = spec.homepage + "/blob/master/ChangeLog"
-  spec.required_ruby_version = '>= 2.5'
+  spec.required_ruby_version = '>= 2.6'
 
   # We fix the version of the spec to newer versions only in the third position
   # hoping that these version fix only security/severe bugs

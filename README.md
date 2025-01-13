@@ -16,7 +16,7 @@ Application framework for state based session management. See lib/sbsm.rb
 
 ## REQUIREMENTS:
 
-* Ruby 2.5
+* Ruby 2.6
 
 ## INSTALL:
 
@@ -33,7 +33,7 @@ You can also install files into your favorite directory by supplying setup.rb so
 
 ## TESTING
 
-* bundle exec test/suite.rb
+* bundle exec rake test
 
 ## DEVELOPERS:
 
