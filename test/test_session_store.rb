@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #--
 #
 # State Based Session Management
@@ -25,49 +25,50 @@
 # TestSession -- sbsm -- 22.10.2002 -- hwyss@ywesee.com
 #++
 
-require 'minitest/autorun'
-require 'sbsm/session_store'
-require 'sbsm/validator'
-require 'sbsm/trans_handler'
-require 'sbsm/app'
-require 'rack'
-require 'rack/test'
+require "minitest/autorun"
+require "sbsm/session_store"
+require "sbsm/validator"
+require "sbsm/trans_handler"
+require "sbsm/app"
+require "rack"
+require "rack/test"
 
 begin
-  require 'pry'
+  require "pry"
 rescue LoadError
 end
 
 class SBSM::Session
   attr_accessor :mtime
 end
+
 class SBSM::SessionStore
   CAP_MAX_THRESHOLD = 2
   MAX_SESSIONS = 3
 end
+
 class TestSessionStore < Minitest::Test
   include Rack::Test::Methods
-	def setup
-    @app =  SBSM::App.new()
+  def setup
+    @app = SBSM::App.new
     @session = SBSM::Session.new(app: @app)
     @session_store = SBSM::SessionStore.new(app: @app)
-	end
-
-  def app
-    @app
   end
 
-  IDS = ['1', '2', '3', '4', '5', '6', '7']
+  attr_reader :app
+
+  IDS = ["1", "2", "3", "4", "5", "6", "7"]
   NR_SESSIONS = IDS.size
   def test_clean
     assert_equal(0, SBSM::SessionStore.sessions.size)
     IDS.each do |session_id|
-      @session_store[session_id].mtime = Time.now - (SBSM::Session::EXPIRES+2)
+      @session_store[session_id].mtime = Time.now - (SBSM::Session::EXPIRES + 2)
     end
     assert_equal(NR_SESSIONS, SBSM::SessionStore.sessions.size)
     @session_store.clean
     assert_equal(0, SBSM::SessionStore.sessions.size)
   end
+
   def test_session_store_clear
     IDS.each do |session_id|
       @session_store[session_id]
@@ -76,6 +77,7 @@ class TestSessionStore < Minitest::Test
     SBSM::SessionStore.clear
     assert_equal(0, SBSM::SessionStore.sessions.size)
   end
+
   def test_session_cap_max_session
     IDS.each do |session_id|
       @session_store[session_id]
@@ -83,6 +85,6 @@ class TestSessionStore < Minitest::Test
     assert_equal(NR_SESSIONS, SBSM::SessionStore.sessions.size)
     @session_store.cap_max_sessions
     assert_equal(2, NR_SESSIONS - SBSM::SessionStore::CAP_MAX_THRESHOLD - SBSM::SessionStore::MAX_SESSIONS)
-    assert_equal(2+1, SBSM::SessionStore.sessions.size)
+    assert_equal(2 + 1, SBSM::SessionStore.sessions.size)
   end
 end

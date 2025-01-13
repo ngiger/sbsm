@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #--
 #
 # State Based Session Management
@@ -22,11 +22,11 @@
 # ywesee - intellectual capital connected, Winterthurerstrasse 52, CH-8006 Zürich, Switzerland
 # hwyss@ywesee.com
 #
-# Time -- sbsm -- 20.11.2002 -- hwyss@ywesee.com 
+# Time -- sbsm -- 20.11.2002 -- hwyss@ywesee.com
 #++
 
 class Time
-	def rfc1123
-		gmtime.strftime('%a, %d %b %Y %H:%M:%S %Z')
-	end
+  def rfc1123
+    gmtime.strftime("%a, %d %b %Y %H:%M:%S %Z")
+  end
 end

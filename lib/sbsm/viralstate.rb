@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #--
 #
 # State Based Session Management
@@ -22,29 +22,30 @@
 # ywesee - intellectual capital connected, Winterthurerstrasse 52, CH-8006 Zürich, Switzerland
 # hwyss@ywesee.com
 #
-# ViralState -- sbsm -- 16.04.2004 -- hwyss@ywesee.com 
+# ViralState -- sbsm -- 16.04.2004 -- hwyss@ywesee.com
 #++
 
 module SBSM
-	module ViralState
-		VIRAL = true
-		def infect(newstate)
-			@viral_modules.uniq.each { |mod|
-				newstate.extend(mod) unless newstate.is_a?(mod)
-			}
-			newstate
-		end
+  module ViralState
+    VIRAL = true
+    def infect(newstate)
+      @viral_modules.uniq.each { |mod|
+        newstate.extend(mod) unless newstate.is_a?(mod)
+      }
+      newstate
+    end
+
     def trigger(event)
       newstate = super
-      if(event==:logout)
+      if event == :logout
         @session.logout
       else
-				infect(newstate)
+        infect(newstate)
       end
       newstate
     rescue RangeError
       @session.logout
       home
     end
-	end
+  end
 end

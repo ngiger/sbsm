@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #
 # State Based Session Management
 # Copyright (C) 2004 Hannes Wyss
@@ -26,8 +26,8 @@
 $: << File.dirname(__FILE__)
 $: << File.expand_path("../lib", File.dirname(__FILE__))
 
-require 'minitest/autorun'
-require 'sbsm/index'
+require "minitest/autorun"
+require "sbsm/index"
 
 module SBSM
   class Index
@@ -38,49 +38,58 @@ end
 class TestIndex < Minitest::Test
   def setup
     @index = SBSM::Index.new
-    @index.store('foo', 'bar')
-    @index.store('bar', 'foo')
-    assert_equal(['bar'], @index['foo'])
-    assert_equal(['foo'], @index['bar'])
+    @index.store("foo", "bar")
+    @index.store("bar", "foo")
+    assert_equal(["bar"], @index["foo"])
+    assert_equal(["foo"], @index["bar"])
   end
+
   def test_to_a
-    assert_equal(['foo', 'bar'], @index.to_a)
+    assert_equal(["foo", "bar"], @index.to_a)
   end
+
   def test_fetch1
-    assert_equal(['bar'], @index.fetch('foo'))
+    assert_equal(["bar"], @index.fetch("foo"))
   end
+
   def test_fetch2
-    assert_equal([], @index.fetch('Foo'))
+    assert_equal([], @index.fetch("Foo"))
   end
+
   def test_fetch3
-    @index.store('bar', ['foobar', 'babar'])
-    assert_equal(['foo', ['foobar', 'babar']], @index['ba'])
+    @index.store("bar", ["foobar", "babar"])
+    assert_equal(["foo", ["foobar", "babar"]], @index["ba"])
   end
+
   def test_store1
     #  store(key, *values)
-    @index.store('bar', 'babar')
-    assert_equal(['foo', 'babar'], @index['bar'])
-    assert_equal(['foo', 'babar'], @index.children['b'.ord].children['a'.ord].children['r'.ord].values)
-    assert_equal(['foo', 'babar'], @index['ba'])
+    @index.store("bar", "babar")
+    assert_equal(["foo", "babar"], @index["bar"])
+    assert_equal(["foo", "babar"], @index.children["b".ord].children["a".ord].children["r".ord].values)
+    assert_equal(["foo", "babar"], @index["ba"])
   end
+
   def test_store2
-    @index.store('bar', 'foobar', 'babar')
-    assert_equal(['foo', 'foobar', 'babar'], @index.children['b'.ord].children['a'.ord].children['r'.ord].values)
-    assert_equal(['foo', 'foobar', 'babar'], @index['ba'])
+    @index.store("bar", "foobar", "babar")
+    assert_equal(["foo", "foobar", "babar"], @index.children["b".ord].children["a".ord].children["r".ord].values)
+    assert_equal(["foo", "foobar", "babar"], @index["ba"])
   end
+
   def test_store3
-    @index.store('bar', ['foobar', 'babar'])
-    assert_equal(['foo', ['foobar', 'babar']], @index.children['b'.ord].children['a'.ord].children['r'.ord].values)
+    @index.store("bar", ["foobar", "babar"])
+    assert_equal(["foo", ["foobar", "babar"]], @index.children["b".ord].children["a".ord].children["r".ord].values)
   end
+
   def test_replace
     # replace(oldkey, newkey, value)
-    @index.replace('foo', 'muh', 'bar')
-    assert_equal(['bar'], @index['muh'])
-    assert_equal(['bar'], @index.children['m'.ord].children['u'.ord].children['h'.ord].values)
+    @index.replace("foo", "muh", "bar")
+    assert_equal(["bar"], @index["muh"])
+    assert_equal(["bar"], @index.children["m".ord].children["u".ord].children["h".ord].values)
   end
+
   def test_delete
-    @index.delete('foo', 'bar')
-    assert_equal([], @index.children['f'.ord].children['o'.ord].children['o'.ord].values)
-    assert_equal([], @index['foo'])
+    @index.delete("foo", "bar")
+    assert_equal([], @index.children["f".ord].children["o".ord].children["o".ord].values)
+    assert_equal([], @index["foo"])
   end
 end

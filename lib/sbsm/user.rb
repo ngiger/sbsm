@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #--
 #
 # State Based Session Management
@@ -26,25 +26,31 @@
 #++
 
 module SBSM
-	class User
-		HOME = nil
-		NAVIGATION = []
-		SESSION_WEIGHT = 1
-		SESSION_WEIGHT_FACTOR = 60 * 15 # 15 Minutes
-		def home
-			self::class::HOME
-		end
-		def navigation
-			self::class::NAVIGATION.dup
-		end
-		def pass; end
-		def session_weight
-			self::class::SESSION_WEIGHT * SESSION_WEIGHT_FACTOR
-		end
-	end
-	class UnknownUser < User
-	end
-	class KnownUser < User
-		SESSION_WEIGHT = 2
-	end
+  class User
+    HOME = nil
+    NAVIGATION = []
+    SESSION_WEIGHT = 1
+    SESSION_WEIGHT_FACTOR = 60 * 15 # 15 Minutes
+    def home
+      self.class::HOME
+    end
+
+    def navigation
+      self.class::NAVIGATION.dup
+    end
+
+    def pass
+    end
+
+    def session_weight
+      self.class::SESSION_WEIGHT * SESSION_WEIGHT_FACTOR
+    end
+  end
+
+  class UnknownUser < User
+  end
+
+  class KnownUser < User
+    SESSION_WEIGHT = 2
+  end
 end

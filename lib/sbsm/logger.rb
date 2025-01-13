@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #--
 # State Based Session Management
 # Copyright (C) 2016 Niklaus Giger
@@ -22,33 +22,38 @@
 # ngiger@ywesee.com
 #++
 
-require 'logger'
-require 'sbsm/version'
+require "logger"
+require "sbsm/version"
 module SBSM
-  @@logger = Logger.new(STDERR)
+  @@logger = Logger.new($stderr)
   @@logger.level = Logger::WARN
   def self.logger=(logger)
     @@logger = logger
   end
+
   def self.logger
     @@logger
   end
+
   # a simple logger, which makes it easy to compare the timing of the entries
   # by the different process. Should probably later be replaced by a Rack based logger
   def self.info(msg)
-    info = "#{File.basename(caller[0])} #{msg}"
-    @@logger.info(info) if @@logger
+    info = "#{File.basename(caller(1..1).first)} #{msg}"
+    @@logger&.info(info)
   end
+
   def self.error(msg)
-    info = "#{File.basename(caller[0])} #{msg}"
-    @@logger.error(info) if @@logger
+    info = "#{File.basename(caller(1..1).first)} #{msg}"
+    @@logger&.error(info)
   end
+
   def self.warn(msg)
-    info = "#{File.basename(caller[0])} #{msg}"
-    @@logger.warn(info) if @@logger
+    info = "#{File.basename(caller(1..1).first)} #{msg}"
+    @@logger&.warn(info)
   end
+
   def self.debug(msg)
-    info = "#{File.basename(caller[0])} #{msg}"
-    @@logger.debug(info) if @@logger
+    info = "#{File.basename(caller(1..1).first)} #{msg}"
+    @@logger&.debug(info)
   end
 end

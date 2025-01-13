@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #--
 #
 # State Based Session Management
@@ -25,26 +25,27 @@
 # TestSession -- sbsm -- 22.10.2002 -- hwyss@ywesee.com
 #++
 
-require 'minitest/autorun'
-require 'fileutils'
-require 'tempfile'
-require 'sbsm/logger'
+require "minitest/autorun"
+require "fileutils"
+require "tempfile"
+require "sbsm/logger"
 begin
-  require 'pry'
+  require "pry"
 rescue LoadError
 end
 class TestLogger < Minitest::Test
   def setup
-    @saved_loger = SBSM.logger ? SBSM.logger : nil
-    @temp_file = Tempfile.new('foo')
+    @saved_loger = SBSM.logger || nil
+    @temp_file = Tempfile.new("foo")
     @temp_file.write("TestLogger TempFile")
     @temp_file.flush
     @default_name = @temp_file.path
     # we reload the logger class as it initializes the logger to a default value
-    load 'sbsm/logger.rb'
+    load "sbsm/logger.rb"
   end
+
   def teardown
-    SBSM.logger= @saved_loger
+    SBSM.logger = @saved_loger
     @temp_file.unlink
   end
 
@@ -57,10 +58,10 @@ class TestLogger < Minitest::Test
   end
 
   def test_change_logger
-    new_name = '/tmp/sbsm_test_log'
+    new_name = "/tmp/sbsm_test_log"
     FileUtils.rm_f(new_name)
     assert_equal(false, File.exist?(new_name))
-    SBSM.logger= Logger.new(new_name)
+    SBSM.logger = Logger.new(new_name)
     assert_equal(true, File.exist?(new_name))
     saved_length = File.size(new_name)
 
@@ -73,7 +74,7 @@ class TestLogger < Minitest::Test
     SBSM.logger.level = :info
     SBSM.info("info #{__LINE__}")
     assert(saved_length < File.size(new_name))
-    saved_length = File.size(new_name)
+    File.size(new_name)
     SBSM.debug("debug #{__LINE__}")
     saved_length = File.size(new_name)
 
@@ -94,7 +95,7 @@ class TestLogger < Minitest::Test
 
   def test_nil_logger
     default_saved_length = File.size(@default_name)
-    SBSM.logger= nil
+    SBSM.logger = nil
     assert_equal(default_saved_length, File.size(@default_name))
     SBSM.debug("debug #{__LINE__}")
     SBSM.info("info #{__LINE__}")
@@ -104,34 +105,33 @@ class TestLogger < Minitest::Test
   def test_warn
     SBSM.logger = Logger.new(@temp_file.path)
     saved_length = File.size(@temp_file.path)
-    assert( !/test_warn/.match(IO.read(@temp_file.path)))
+    assert(!/test_warn/.match(IO.read(@temp_file.path)))
     SBSM.warn("xx #{__LINE__}")
     assert(saved_length < File.size(@temp_file.path))
-    content = IO.read(@temp_file.path)
+    IO.read(@temp_file.path)
     assert_match(/test_warn/, IO.read(@temp_file.path))
   end
 
   def test_error
     SBSM.logger = Logger.new(@temp_file.path)
     saved_length = File.size(@temp_file.path)
-    assert( !/test_error/.match(IO.read(@temp_file.path)))
+    assert(!/test_error/.match(IO.read(@temp_file.path)))
     SBSM.error("xx #{__LINE__}")
     assert(saved_length < File.size(@temp_file.path))
     assert_match(/test_error/, IO.read(@temp_file.path))
   end
 
   def test_log_level
-    assert_equal(Logger::WARN,  SBSM.logger.level)
+    assert_equal(Logger::WARN, SBSM.logger.level)
     SBSM.logger = Logger.new(@temp_file.path, level: Logger::ERROR)
-    assert_equal(Logger::ERROR,  SBSM.logger.level)
-    saved_length = File.size(@temp_file.path)
-    assert( !/test_error/.match(IO.read(@temp_file.path)))
+    assert_equal(Logger::ERROR, SBSM.logger.level)
+    File.size(@temp_file.path)
+    assert(!/test_error/.match(IO.read(@temp_file.path)))
     SBSM.error("test_error #{__LINE__}")
-    SBSM.logger.level= Logger::WARN
+    SBSM.logger.level = Logger::WARN
     assert_match(/test_error/, IO.read(@temp_file.path))
     SBSM.info("test_info #{__LINE__}")
-    content = IO.read(@temp_file.path)
+    IO.read(@temp_file.path)
     assert_nil(/test_info/.match(IO.read(@temp_file.path)))
   end
-
 end

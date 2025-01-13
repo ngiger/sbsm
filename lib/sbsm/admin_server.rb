@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #--
 #
 # State Based Session Management
@@ -26,13 +26,12 @@
 # AdminServer -- sbsm -- niger@ywesee.com
 #  2017: Moved the old _admin interface into a separate class for BBMB and Virbac
 
-require 'delegate'
-require 'sbsm/session'
-require 'sbsm/user'
-require 'thread'
-require 'digest/md5'
-require 'sbsm/logger'
-require 'sbsm/session_store'
+require "delegate"
+require "sbsm/session"
+require "sbsm/user"
+require "digest/md5"
+require "sbsm/logger"
+require "sbsm/session_store"
 
 module SBSM
   # AdminClass must be tied to an Rack app
@@ -41,7 +40,8 @@ module SBSM
       @session = SBSM::SessionStore.new(app: app, multi_threaded: multi_threaded)
       @admin_threads = ThreadGroup.new
     end
-    def _admin(src, result, priority=0)
+
+    def _admin(src, result, priority = 0)
       t = Thread.new {
         Thread.current.abort_on_exception = false
         result << begin
@@ -51,12 +51,12 @@ module SBSM
             e
           end
           str = response.to_s
-          if(str.length > 200)
+          if str.length > 200
             response.class
           else
             str
           end
-        rescue StandardError => e
+        rescue => e
           e.message
         end.to_s
       }

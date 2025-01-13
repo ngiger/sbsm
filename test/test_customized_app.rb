@@ -1,27 +1,29 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
-$: << File.dirname(__FILE__)
-$:.unshift File.expand_path('../lib', File.dirname(__FILE__))
-require 'minitest/autorun'
-require 'rack/test'
-require 'sbsm/app'
-require 'sbsm/session'
-require 'nokogiri'
-require 'sbsm/state'
-require 'simple_sbsm'
 
-ENV['RACK_ENV'] = 'test'
-ENV['REQUEST_METHOD'] = 'GET'
-RUN_ALL_TESTS=true unless defined?(RUN_ALL_TESTS)
+$: << File.dirname(__FILE__)
+$:.unshift File.expand_path("../lib", File.dirname(__FILE__))
+require "minitest/autorun"
+require "rack/test"
+require "sbsm/app"
+require "sbsm/session"
+require "nokogiri"
+require "sbsm/state"
+require "simple_sbsm"
+
+ENV["RACK_ENV"] = "test"
+ENV["REQUEST_METHOD"] = "GET"
+RUN_ALL_TESTS = true unless defined?(RUN_ALL_TESTS)
 
 # Overriding some stuff from the simple_sbsm
 module Demo
-  class View_AboutState
+  class ViewAboutState
     def initialize(model, session)
     end
+
     def http_headers
-      { "foo" =>  "bar" }
+      {"foo" => "bar"}
     end
+
     def to_html(cgi)
       "<br>customized to_html<br>"
     end
@@ -29,26 +31,26 @@ module Demo
 
   class AboutState < GlobalState
     DIRECT_EVENT = :about
-    VIEW = View_AboutState
+    VIEW = ViewAboutState
     def initialize(session, user)
       SBSM.info "AboutState #{session}"
-      super(session, user)
+      super
       session.login
     end
   end
 
-  DEMO_PERSISTENT_COOKIE_NAME = 'demo-simple-sbsm'
-  class Demo::CustomizedSBSM_COOKIE < SBSM::App
+  DEMO_PERSISTENT_COOKIE_NAME = "demo-simple-sbsm"
+  class Demo::CustomizedSbsmCookie < SBSM::App
     PERSISTENT_COOKIE_NAME = DEMO_PERSISTENT_COOKIE_NAME
   end
 
   class CustomLookandfeel < SBSM::Lookandfeel
-    LANGUAGES = ['fr']
+    LANGUAGES = ["fr"]
 
     DICTIONARIES = {
-      'fr' => {
-        hello:              'Bonjour'
-              }
+      "fr" => {
+        hello: "Bonjour"
+      }
     }
   end
 
@@ -65,41 +67,36 @@ module Demo
   end
 
   class CustomizedSession < SBSM::Session
-    DEFAULT_STATE           = AboutState
-    SERVER_NAME            = 'custom_server'
-    DEFAULT_ZONE           = :custome_zone
-    DEFAULT_LANGUAGE       = 'fr'
-    PERSISTENT_COOKIE_NAME = 'CustomizedSession-cookie'
-    LOOKANDFEEL            = CustomLookandfeel
+    DEFAULT_STATE = AboutState
+    SERVER_NAME = "custom_server"
+    DEFAULT_ZONE = :custome_zone
+    DEFAULT_LANGUAGE = "fr"
+    PERSISTENT_COOKIE_NAME = "CustomizedSession-cookie"
+    LOOKANDFEEL = CustomLookandfeel
 
     def initialize(*args, **keyword_args)
       SBSM.debug "session args #{args}"
       @@active_stated_visited = false
       @@login_visited = false
       @@visited_init = true
-      super(*args, **keyword_args)
-    end
-
-    def flavor
-      SBSM.info 'test-flavor'
-      'test-flavor'
+      super
     end
 
     def active_state
-      SBSM.info '@active_stated_visited'
+      SBSM.info "@active_stated_visited"
       @@active_stated_visited = true
       @active_state = super
     end
 
     def flavor
-      SBSM.info 'test-flavor'
-      'test-flavor'
+      SBSM.info "test-flavor"
+      "test-flavor"
     end
 
     def login
-     @@login_visited = true
-     SBSM.info '@login_visited'
-     'user'
+      @@login_visited = true
+      SBSM.info "@login_visited"
+      "user"
     end
 
     def self.get_visited_init
@@ -114,6 +111,7 @@ module Demo
       defined?(@@login_visited) ? @@login_visited : :not_initialized
     end
   end
+
   class CustomizedSBSM < SBSM::App
     def initialize
       SBSM.info "CustomizedSBSM.new"
@@ -124,9 +122,9 @@ module Demo
     SESSION = CustomizedSession
 
     def initialize(validator: CustomizedValidator.new,
-                   trans_handler: SBSM::TransHandler.instance,
-                   cookie_name: nil,
-                   session_class: SESSION)
+      trans_handler: SBSM::TransHandler.instance,
+      cookie_name: nil,
+      session_class: SESSION)
       SBSM.info "CustomizedRackInterface.new SESSION #{SESSION}"
       super(app: CustomizedSBSM.new,
             validator: validator,
@@ -135,39 +133,42 @@ module Demo
             session_class: session_class)
     end
   end
-
 end
 
-class CustomizedAppInvalidValidator < Minitest::Test
-  include Rack::Test::Methods
-  attr_reader :app
+if RUN_ALL_TESTS
+  class CustomizedAppInvalidValidator < Minitest::Test
+    include Rack::Test::Methods
+    attr_reader :app
 
-  def test_raise_exeption_if_class
-    @app = Demo::CustomizedRackInterface.new(validator: ::SBSM::Validator)
-    skip ('TODO: We should test test_raise_exeption_if_class')
-    assert_raises {  get '/' do   end }
+    def test_raise_exeption_if_class
+      @app = Demo::CustomizedRackInterface.new(validator: ::SBSM::Validator)
+      skip("TODO: We should test test_raise_exeption_if_class")
+      assert_raises { get "/" do end } # standard:disable Standard/BlockSingleLineBraces
+    end
+
+    def test_valid_if_validator
+      @app = Demo::CustomizedRackInterface.new(validator: ::SBSM::Validator.new)
+      get "/" do end # standard:disable Standard/BlockSingleLineBraces
+    end
   end
+end
 
-  def test_valid_if_validator
-    @app = Demo::CustomizedRackInterface.new(validator: ::SBSM::Validator.new)
-    get '/' do   end
+if RUN_ALL_TESTS
+  class CustomizedAppInvalidTranshandler < Minitest::Test
+    include Rack::Test::Methods
+    attr_reader :app
+
+    def test_raise_exeption_if_class
+      @app = Demo::CustomizedRackInterface.new(trans_handler: ::SBSM::TransHandler)
+      assert_raises { get "/" do end }  # standard:disable Standard/BlockSingleLineBraces
+    end
+
+    def test_valid_if_validator_instance
+      @app = Demo::CustomizedRackInterface.new(trans_handler: ::SBSM::TransHandler.instance)
+      get "/" do end # standard:disable Standard/BlockSingleLineBraces
+    end
   end
-end if RUN_ALL_TESTS
-
-class CustomizedAppInvalidTranshandler < Minitest::Test
-  include Rack::Test::Methods
-  attr_reader :app
-
-  def test_raise_exeption_if_class
-    @app = Demo::CustomizedRackInterface.new(trans_handler: ::SBSM::TransHandler)
-    assert_raises {  get '/' do   end }
-  end
-
-  def test_valid_if_validator_instance
-    @app = Demo::CustomizedRackInterface.new(trans_handler: ::SBSM::TransHandler.instance)
-    get '/' do   end
-  end
-end if RUN_ALL_TESTS
+end
 
 class CustomizedAppSessionValidatorLnf < Minitest::Test
   include Rack::Test::Methods
@@ -176,66 +177,74 @@ class CustomizedAppSessionValidatorLnf < Minitest::Test
     @app = Demo::CustomizedRackInterface.new
   end
 
-  def test_customized_active_state
-    get '/' do
+  if RUN_ALL_TESTS
+    def test_customized_active_state
+      get "/" do
+      end
+      assert last_response.ok?
+      assert_equal true, Demo::CustomizedSession.get_visited_active_state, "Should have visited customized active_state"
     end
-    assert last_response.ok?
-    assert_equal true, Demo::CustomizedSession.get_visited_active_state, 'Should have visited customized active_state'
-  end if RUN_ALL_TESTS
-  def test_customized_session_init
-    get '/' do
+  end
+  if RUN_ALL_TESTS
+    def test_customized_session_init
+      get "/" do
+      end
+      assert last_response.ok?
+      assert_equal true, Demo::CustomizedSession.get_visited_init, "Should have visited customized session init"
     end
-    assert last_response.ok?
-    assert_equal true, Demo::CustomizedSession.get_visited_init, 'Should have visited customized session init'
-  end if RUN_ALL_TESTS
+  end
 
-  def test_customized_validator
-    # @app = Demo::CustomizedSBSM.new(validator: Demo::CustomizedValidator.new)
-    get '/' do
+  if RUN_ALL_TESTS
+    def test_customized_validator
+      # @app = Demo::CustomizedSBSM.new(validator: Demo::CustomizedValidator.new)
+      get "/" do
+      end
+      assert last_response.ok?
+      assert_equal true, Demo::CustomizedValidator.get_visited_init, "Should have initialized customized validator"
     end
-    assert last_response.ok?
-    assert_equal true, Demo::CustomizedValidator.get_visited_init, 'Should have initialized customized validator'
-  end if RUN_ALL_TESTS
+  end
 
   def test_customized_login
-    get '/fr/page/about' do  # we patched to force a login
+    get "/fr/page/about" do  # we patched to force a login
     end
     assert last_response.ok?
-    assert_equal true, Demo::CustomizedSession.get_visited_login, 'Should have visited customized login'
+    assert_equal true, Demo::CustomizedSession.get_visited_login, "Should have visited customized login"
   end
 
   def test_customized_http_header
-    get '/fr/page/about' do  # we patched to force a login
+    get "/fr/page/about" do  # we patched to force a login
     end
     assert last_response.ok?
-    assert_equal 'bar', last_response.headers['foo']
-    assert_equal '<br>customized to_html<br>', last_response.body
+    assert_equal "bar", last_response.headers["foo"]
+    assert_equal "<br>customized to_html<br>", last_response.body
   end
 
   def test_process_state
-    get '/fr/page/home' do  # we patched to force a login
+    get "/fr/page/home" do  # we patched to force a login
     end
     assert_equal Demo::AboutState, @app.last_session.active_state.class
     assert_equal(1, @app.last_session.attended_states.size)
-    get '/fr/page/feedback' do  # we patched to force a login
+    get "/fr/page/feedback" do  # we patched to force a login
     end
-    skip ('TODO: We should test test_process_state')
+    skip("TODO: We should test test_process_state")
     assert_equal(1, @app.last_session.attended_states.size)
     assert_equal Demo::FeedbackState, @app.last_session.active_state.class
   end
 
-  def test_customized_cookie_name
-    my_cookey_name = 'my-cookie-name'
-    @app = Demo::CustomizedRackInterface.new(cookie_name: my_cookey_name)
-    get '/' do
+  if RUN_ALL_TESTS
+    def test_customized_cookie_name
+      my_cookey_name = "my-cookie-name"
+      @app = Demo::CustomizedRackInterface.new(cookie_name: my_cookey_name)
+      get "/" do
+      end
+      assert last_response.ok?
+      # TEST_COOKIE_NAME set via param to app
+      cookie = last_response.get_header("Set-Cookie")[0].split("\n").find_all { |x| x.index(my_cookey_name) }
+      skip("TODO: We should test test_customized_cookie_name")
+      assert_equal 1, cookie.size
+      assert_match my_cookey_name, cookie.first
     end
-    assert last_response.ok?
-    # TEST_COOKIE_NAME set via param to app
-    cookie = last_response.get_header('Set-Cookie')[0].split("\n").find_all{|x| x.index(my_cookey_name)}
-    skip ('TODO: We should test test_customized_cookie_name')
-    assert_equal 1, cookie.size
-    assert_match my_cookey_name, cookie.first
-  end if RUN_ALL_TESTS
+  end
 end
 
 class CustomizedAppCookieName < Minitest::Test
@@ -245,14 +254,15 @@ class CustomizedAppCookieName < Minitest::Test
     @sbsm_app = SBSM::App.new
     @app = SBSM::RackInterface.new(app: @sbsm_app, cookie_name: Demo::DEMO_PERSISTENT_COOKIE_NAME)
   end
-  def test_customized_cookie_name
-    get '/' do
+  if RUN_ALL_TESTS
+    def test_customized_cookie_name
+      get "/" do
+      end
+      assert last_response.ok?
+      cookie = last_response.get_header("Set-Cookie")[0].split("\n").find_all { |x| x.index(Demo::DEMO_PERSISTENT_COOKIE_NAME) }
+      skip("TODO: We should test test_customized_cookie_name")
+      assert_equal 1, cookie.size
+      assert_match Demo::DEMO_PERSISTENT_COOKIE_NAME, cookie.first
     end
-    assert last_response.ok?
-    cookie = last_response.get_header('Set-Cookie')[0].split("\n").find_all{|x| x.index(Demo::DEMO_PERSISTENT_COOKIE_NAME)}
-    skip ('TODO: We should test test_customized_cookie_name')
-    assert_equal 1, cookie.size
-    assert_match Demo::DEMO_PERSISTENT_COOKIE_NAME, cookie.first
-  end if RUN_ALL_TESTS
+  end
 end
-

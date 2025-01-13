@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #--
 # State Based Session Management
 # Copyright (C) 2004 Hannes Wyss
@@ -21,47 +21,52 @@
 # ywesee - intellectual capital connected, Winterthurerstrasse 52, CH-8006 Zürich, Switzerland
 # hwyss@ywesee.com
 #
-# Index -- sbsm -- 04.03.2003 -- hwyss@ywesee.com 
+# Index -- sbsm -- 04.03.2003 -- hwyss@ywesee.com
 #++
 
 module SBSM
   class Index
-		def initialize
-			@values = []
-			@children = []
-		end
-		def delete(key, value)
-			if (key.size == 0)
-				@values.delete(value)
-			elsif (child = @children.at(key.chars.first.ord))
-				child.delete(key[1..-1], value)
-			end
-		end
-		def fetch(key)
-			if(key.size == 1)
-				@values + @children[key.chars.first.ord].to_a
-			elsif(key.size > 1 && @children.at(key.chars.first.ord))
-				@children.at(key.chars.first.ord)[key[1..-1]]
-			else
-				[]
-			end
-		end
-		def replace(oldkey, newkey, value)
-			delete(oldkey, value)
-			store(newkey, value)
-		end
-		def store(key, *values)
-			if(key.size == 0)
-				@values += values
-			else
-				@children[key.chars.first.ord] ||= self.class.new
-				@children.at(key.chars.first.ord).store(key[1..-1], *values)
-			end
-		end
-		def to_a
-			@values + @children.inject([]) { |inj, child| inj += child.to_a.compact }
-		end
-		alias :[] :fetch
-		alias :[]= :store
-	end
+    def initialize
+      @values = []
+      @children = []
+    end
+
+    def delete(key, value)
+      if key.size == 0
+        @values.delete(value)
+      elsif (child = @children.at(key[0].ord))
+        child.delete(key[1..], value)
+      end
+    end
+
+    def fetch(key)
+      if key.size == 1
+        @values + @children[key[0].ord].to_a
+      elsif key.size > 1 && @children.at(key[0].ord)
+        @children.at(key[0].ord)[key[1..]]
+      else
+        []
+      end
+    end
+
+    def replace(oldkey, newkey, value)
+      delete(oldkey, value)
+      store(newkey, value)
+    end
+
+    def store(key, *values)
+      if key.size == 0
+        @values += values
+      else
+        @children[key[0].ord] ||= self.class.new
+        @children.at(key[0].ord).store(key[1..], *values)
+      end
+    end
+
+    def to_a
+      @values + @children.inject([]) { |inj, child| inj + child.to_a.compact }
+    end
+    alias_method :[], :fetch
+    alias_method :[]=, :store
+  end
 end

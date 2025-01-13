@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #--
 # State Based Session Management
 # Copyright (C) 2004 Hannes Wyss
@@ -23,29 +23,30 @@
 #
 # LookandfeelFactory -- sbsm -- hwyss@ywesee.com
 #++
-require 'sbsm/lookandfeel'
+require "sbsm/lookandfeel"
 
 module SBSM
-  class LookandfeelFactory 
-		WRAPPERS = {}
-		BASE = Lookandfeel
+  class LookandfeelFactory
+    WRAPPERS = {}
+    BASE = Lookandfeel
     class << self
       def create(session)
         lnf = self::BASE.new(session)
-        if(wrappers = self::WRAPPERS[session.flavor])
-					lnf = wrappers.inject(lnf) { |lnf, klass| 
-						klass.new(lnf)
-					}
-				end
+        if (wrappers = self::WRAPPERS[session.flavor])
+          lnf = wrappers.inject(lnf) { |lnf, klass|
+            klass.new(lnf)
+          }
+        end
         lnf
-			rescue StandardError => e
-				puts e.class
-				puts e.message
-				puts e.backtrace
+      rescue => e
+        puts e.class
+        puts e.message
+        puts e.backtrace
       end
-			def include?(str)
-				self::WRAPPERS.include?(str)
-			end
+
+      def include?(str)
+        self::WRAPPERS.include?(str)
+      end
     end
   end
 end

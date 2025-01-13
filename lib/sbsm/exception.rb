@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #--
 # State Based Session Management
 # Copyright (C) 2004 Hannes Wyss
@@ -21,9 +21,9 @@
 # ywesee - intellectual capital connected, Winterthurerstrasse 52, CH-8006 Zürich, Switzerland
 # hwyss@ywesee.com
 #
-# Exception -- sbsm -- 22.10.2002 -- hwyss@ywesee.com 
+# Exception -- sbsm -- 22.10.2002 -- hwyss@ywesee.com
 #++
 module SBSM
-	class ProcessingError < RuntimeError
-	end
+  class ProcessingError < RuntimeError
+  end
 end

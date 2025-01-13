@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #
 # State Based Session Management
 # Copyright (C) 2004 Hannes Wyss
@@ -21,25 +21,27 @@
 # ywesee - intellectual capital connected, Winterthurerstrasse 52, CH-8006 Zürich, Switzerland
 # hwyss@ywesee.com
 #
-# TestUser -- sbsm -- 20.11.2002 -- hwyss@ywesee.com 
+# TestUser -- sbsm -- 20.11.2002 -- hwyss@ywesee.com
 
 $: << File.dirname(__FILE__)
 $: << File.expand_path("../lib", File.dirname(__FILE__))
 
-require 'minitest/autorun'
-require 'sbsm/user'
-require 'sbsm/state'
+require "minitest/autorun"
+require "sbsm/user"
+require "sbsm/state"
 
 class StubUserState < SBSM::State; end
+
 class User < SBSM::User
-	NAVIGATION = [StubUserState]
+  NAVIGATION = [StubUserState]
 end
 
 class TestUser < Minitest::Test
-	def setup
-		@user = User.new
-	end
-	def test_navigation
-		assert_equal([StubUserState], @user.navigation)
-	end
+  def setup
+    @user = User.new
+  end
+
+  def test_navigation
+    assert_equal([StubUserState], @user.navigation)
+  end
 end

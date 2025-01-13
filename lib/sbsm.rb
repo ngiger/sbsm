@@ -27,5 +27,4 @@
 #   option values, e.g. /de/gcc/fachinfo/reg/58980
 #
 module SBSM
-
 end

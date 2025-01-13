@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #--
 #
 # State Based Session Management
@@ -26,14 +26,13 @@
 #  2016: ported this code from the old DrbServer
 #++
 
-require 'delegate'
-require 'sbsm/session'
-require 'sbsm/user'
-require 'thread'
-require 'digest/md5'
-require 'sbsm/logger'
-require 'sbsm/validator'
-require 'sbsm/session_store'
+require "delegate"
+require "sbsm/session"
+require "sbsm/user"
+require "digest/md5"
+require "sbsm/logger"
+require "sbsm/validator"
+require "sbsm/session_store"
 
 module SBSM
   #
@@ -53,16 +52,16 @@ module SBSM
     @@mutex = Mutex.new
     @@sessions = {}
     def initialize(app:,
-                   persistence_layer: nil,
-                   trans_handler: nil,
-                   session_class: nil,
-                   validator: nil,
-                   cookie_name: nil,
-                   unknown_user: UNKNOWN_USER.new,
-                   multi_threaded: nil)
+      persistence_layer: nil,
+      trans_handler: nil,
+      session_class: nil,
+      validator: nil,
+      cookie_name: nil,
+      unknown_user: UNKNOWN_USER.new,
+      multi_threaded: nil)
       fail "You must specify an app!" unless app
       @@sessions = {}
-      @cleaner = run_cleaner if(self.class.const_get(:RUN_CLEANER))
+      @cleaner = run_cleaner if self.class.const_get(:RUN_CLEANER)
       @app = app
       @system = persistence_layer
       @persistence_layer = persistence_layer
@@ -75,86 +74,91 @@ module SBSM
       @unknown_user ||= UnknownUser.new
       @validator = validator
     end
+
     def cap_max_sessions(now = Time.now)
-        if(@@sessions.size > self::class::CAP_MAX_THRESHOLD)
-          SBSM.info "too many sessions! Keeping only #{self::class::MAX_SESSIONS}"
-          sess = nil
-          @@sessions.values.sort[0...(-self::class::MAX_SESSIONS)].each { |sess|
-            sess.__checkout
-            @@sessions.delete(sess.key)
-          }
-          if(sess)
-            age = sess.age(now)
-            SBSM.info sprintf("deleted all sessions that had not been accessed for more than %im %is", age / 60, age % 60)
-          end
-        end
-      seconds = (Time.now.to_i - now.to_i)
-      SBSM.warn sprintf("cap_max_sessions to #{self::class::CAP_MAX_THRESHOLD}. took %d seconds", seconds)
-    end
-    def clean
-      now = Time.now
-      old_size = @@sessions.size
-      @@sessions.delete_if do |key, s|
-        begin
-          if s.respond_to?(:expired?)
-            if s.expired?(now)
-              s.__checkout
-              true
-            else
-              s.cap_max_states
-              false
-            end
-          else
-            true
-          end
-        rescue
-          true
+      if @@sessions.size > self.class::CAP_MAX_THRESHOLD
+        SBSM.info "too many sessions! Keeping only #{self.class::MAX_SESSIONS}"
+        sess = nil
+        @@sessions.values.sort[0...(-self.class::MAX_SESSIONS)].each { |sess|
+          sess.__checkout
+          @@sessions.delete(sess.key)
+        }
+        if sess
+          age = sess.age(now)
+          SBSM.info sprintf("deleted all sessions that had not been accessed for more than %im %is", age / 60, age % 60)
         end
       end
       seconds = (Time.now.to_i - now.to_i)
+      SBSM.warn sprintf("cap_max_sessions to #{self.class::CAP_MAX_THRESHOLD}. took %d seconds", seconds)
+    end
+
+    def clean
+      now = Time.now
+      @@sessions.size
+      @@sessions.delete_if do |key, s|
+        if s.respond_to?(:expired?)
+          if s.expired?(now)
+            s.__checkout
+            true
+          else
+            s.cap_max_states
+            false
+          end
+        else
+          true
+        end
+      rescue
+        true
+      end
+      (Time.now.to_i - now.to_i)
       # SBSM.warn sprintf("Cleaned #{old_size - @@sessions.size} sessions. Took %d seconds", seconds)
     end
-    def SessionStore.sessions
+
+    def self.sessions
       @@sessions
     end
 
-    def SessionStore.clear
+    def self.clear
       @@mutex.synchronize do
         @@sessions.each_value { |sess| sess.__checkout }
         @@sessions.clear
       end
     end
+
     def delete_session(key)
-      if(sess = @@sessions.delete(key))
+      if (sess = @@sessions.delete(key))
         sess.__checkout
       end
     end
+
     def reset
       @@mutex.synchronize {
         @@sessions.clear
       }
     end
+
     def run_cleaner
       # puts "running cleaner thread"
       Thread.new do
         Thread.current.abort_on_exception = true
-        #Thread.current.priority = 1
+        # Thread.current.priority = 1
         loop do
-          sleep self::class::CLEANING_INTERVAL
+          sleep self.class::CLEANING_INTERVAL
           @@mutex.synchronize do
-            clean()
+            clean
           end
         end
       end
     end
+
     def [](key)
       @@mutex.synchronize do
-        unless((s = @@sessions[key]) && !s.expired?)
+        unless (s = @@sessions[key]) && !s.expired?
           s = @@sessions[key] = @session_class.new(app: @app, cookie_name: @cookie_name, trans_handler: @trans_handler, validator: @validator, unknown_user: @unknown_user)
         end
-        s.key=key
-        s.reset()
-        s.touch()
+        s.key = key
+        s.reset
+        s.touch
         s
       end
     end

@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #
 # State Based Session Management
 # Copyright (C) 2004 Hannes Wyss
@@ -21,15 +21,15 @@
 # ywesee - intellectual capital connected, Winterthurerstrasse 52, CH-8006 Zürich, Switzerland
 # hwyss@ywesee.com
 #
-# CGI -- oddb -- 18.11.2002 -- hwyss@ywesee.com 
+# CGI -- oddb -- 18.11.2002 -- hwyss@ywesee.com
 
-require 'sbsm/cgi'
+require "sbsm/cgi"
 
 class CGI
-	STUB_VALUES = {}
-  def initialize throwaway=nil
+  STUB_VALUES = {}
+  def initialize throwaway = nil
     extend Html4Tr
-    element_init()
+    element_init
     extend HtmlExtension
     @params = STUB_VALUES.dup
   end

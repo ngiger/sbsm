@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+
 #--
 # State Based Session Management
 # Copyright (C) 2004 Hannes Wyss
@@ -24,7 +24,7 @@
 #++
 # CGI redefinitions
 
-require 'cgi'
+require "cgi"
 
 class CGI
   # Lets satisfy cgi-offline prompt, even if request does not have
@@ -32,13 +32,13 @@ class CGI
   # See http://ruby-doc.org/stdlib-2.3.1/libdoc/cgi/rdoc/CGI.html#method-c-new
   def self.initialize_without_offline_prompt(*args)
     cgi_input = true
-    unless ENV.has_key?('REQUEST_METHOD')
+    unless ENV.has_key?("REQUEST_METHOD")
       cgi_input = false
-      ENV['REQUEST_METHOD'] = 'GET'
+      ENV["REQUEST_METHOD"] = "GET"
     end
     cgi = CGI.new(*args)
     unless cgi_input
-      ENV.delete('REQUEST_METHOD')
+      ENV.delete("REQUEST_METHOD")
     end
     cgi
   end
